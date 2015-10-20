@@ -63,7 +63,7 @@ if (php_sapi_name() == "cli") {
 			$res = $res->fetchArray();
 			if ($res[0] != 0) {
 				// Ignore doubleposts
-				if ($entries[$i]["author"] == $res[1]) continue;
+				if (strval($entries[$i]["author"]) == $res[1]) continue;
 
 				// Get date
 				$date_raw = $res[2];
@@ -85,7 +85,7 @@ if (php_sapi_name() == "cli") {
 		} else {
 
 			// Ignore doubleposts
-			if ($entries[$i]["author"] == $entries[$i+1]["author"]) continue;
+			if (strval($entries[$i]["author"]) == strval($entries[$i+1]["author"])) continue;
 
 			$min = date_diff($entries[$i]["date"], $entries[$i+1]["date"])->i;
 			$score = ceil(pow($min, 1.1));
