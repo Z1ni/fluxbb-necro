@@ -39,7 +39,7 @@ if (php_sapi_name() == "cli") {
 		preg_match("/pid=(\\d+)#/", $id_raw, $id_m);	// Match post id
 		$id = intval($id_m[1]);
 		$date_raw = $entry->updated;
-		$date = date_create_from_format(DateTime::ATOM, $date_raw);
+		$date = strtotime($date_raw);
 		$author = $entry->author->name;
 
 		$entries[] = array("id" => $id, "date" => $date, "author" => $author);
@@ -58,7 +58,7 @@ if (php_sapi_name() == "cli") {
 			// Check database for previous message
 			// If no match, this is the first message in the thread -- no points
 			$q = $db->prepare("SELECT COUNT(*), author, date FROM posts WHERE date < :d LIMIT 1");
-			$q->bindValue(":d", $entries[$i]["date"]->format("Y-m-d H:i:s"));
+			$q->bindValue(":d", strftime("%F %T", $entries[$i]["date"]));
 			$res = $q->execute();
 			$res = $res->fetchArray();
 			if ($res[0] != 0) {
@@ -67,15 +67,16 @@ if (php_sapi_name() == "cli") {
 
 				// Get date
 				$date_raw = $res[2];
-				$date = date_create_from_format("Y-m-d H:i:s", $date_raw);
-				$min = date_diff($entries[$i]["date"], $date)->i;
+				$date = strtotime($date_raw);
+				$interval = abs($entries[$i]["date"] - $date);
+				$min = round($interval / 60);
 				$score = ceil(pow($min, 1.1));
 
 				// Insert to database
 				$q = $db->prepare("INSERT INTO posts (id, author, date) VALUES (:id, :a, :d)");
 				$q->bindValue(":id", $entries[$i]["id"]);
 				$q->bindValue(":a", $entries[$i]["author"]);
-				$q->bindValue(":d", $entries[$i]["date"]->format("Y-m-d H:i:s"));
+				$q->bindValue(":d", strftime("%F %T", $entries[$i]["date"]));
 				$q->execute();
 
 				add_score($db, $entries[$i]["author"], $score);
@@ -87,13 +88,14 @@ if (php_sapi_name() == "cli") {
 			// Ignore doubleposts
 			if (strval($entries[$i]["author"]) == strval($entries[$i+1]["author"])) continue;
 
-			$min = date_diff($entries[$i]["date"], $entries[$i+1]["date"])->i;
+			$interval = abs($entries[$i]["date"] - $entries[$i+1]["date"]);
+			$min = round($interval / 60);
 			$score = ceil(pow($min, 1.1));
 			// Insert to database
 			$q = $db->prepare("INSERT INTO posts (id, author, date) VALUES (:id, :a, :d)");
 			$q->bindValue(":id", $entries[$i]["id"]);
 			$q->bindValue(":a", $entries[$i]["author"]);
-			$q->bindValue(":d", $entries[$i]["date"]->format("Y-m-d H:i:s"));
+			$q->bindValue(":d", strftime("%F %T", $entries[$i]["date"]));
 			$q->execute();
 
 			add_score($db, $entries[$i]["author"], $score);
